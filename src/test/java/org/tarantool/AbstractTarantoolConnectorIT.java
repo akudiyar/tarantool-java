@@ -4,8 +4,8 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.opentest4j.AssertionFailedError;
 
-import java.math.BigInteger;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.List;
@@ -18,13 +18,13 @@ import java.util.concurrent.TimeoutException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import static org.tarantool.TestUtils.makeInstanceEnv;
 
 /**
  * Abstract test. Provides environment control and frequently used functions.
  */
 public abstract class AbstractTarantoolConnectorIT {
+
     protected static final String host = System.getProperty("tntHost", "localhost");
     protected static final int port = Integer.parseInt(System.getProperty("tntPort", "3301"));
     protected static final int consolePort = Integer.parseInt(System.getProperty("tntConsolePort", "3313"));
@@ -37,8 +37,7 @@ public abstract class AbstractTarantoolConnectorIT {
     protected static final int TIMEOUT = 500;
     protected static final int RESTART_TIMEOUT = 2000;
 
-    protected static final SocketChannelProvider socketChannelProvider = new TestSocketChannelProvider(host, port,
-        RESTART_TIMEOUT);
+    protected static final SocketChannelProvider socketChannelProvider = new TestSocketChannelProvider(host, port, RESTART_TIMEOUT);
 
     protected static TarantoolControl control;
     protected static TarantoolConsole console;
@@ -53,36 +52,36 @@ public abstract class AbstractTarantoolConnectorIT {
     protected static int MPK_INDEX_ID;
     protected static int VIDX_INDEX_ID;
 
-    private static final String[] setupScript = new String[] {
-        "box.schema.space.create('basic_test', { format = " +
-            "{{name = 'id', type = 'integer'}," +
-            " {name = 'val', type = 'string'} } })",
+    private static final String[] setupScript = new String[]{
+            "box.schema.space.create('basic_test', { format = " +
+                    "{{name = 'id', type = 'integer'}," +
+                    " {name = 'val', type = 'string'} } })",
 
-        "box.space.basic_test:create_index('pk', { type = 'TREE', parts = {'id'} } )",
-        "box.space.basic_test:create_index('vidx', { type = 'TREE', unique = false, parts = {'val'} } )",
+            "box.space.basic_test:create_index('pk', { type = 'TREE', parts = {'id'} } )",
+            "box.space.basic_test:create_index('vidx', { type = 'TREE', unique = false, parts = {'val'} } )",
 
-        "box.space.basic_test:replace{1, 'one'}",
-        "box.space.basic_test:replace{2, 'two'}",
-        "box.space.basic_test:replace{3, 'three'}",
+            "box.space.basic_test:replace{1, 'one'}",
+            "box.space.basic_test:replace{2, 'two'}",
+            "box.space.basic_test:replace{3, 'three'}",
 
-        "box.schema.space.create('multipart_test', { format = " +
-            "{{name = 'id1', type = 'integer'}," +
-            " {name = 'id2', type = 'string'}," +
-            " {name = 'val1', type = 'string'} } })",
+            "box.schema.space.create('multipart_test', { format = " +
+                    "{{name = 'id1', type = 'integer'}," +
+                    " {name = 'id2', type = 'string'}," +
+                    " {name = 'val1', type = 'string'} } })",
 
-        "box.space.multipart_test:create_index('pk', { type = 'TREE', parts = {'id1', 'id2'} })",
-        "box.space.multipart_test:create_index('vidx', { type = 'TREE', unique = false, parts = {'val1'} })",
+            "box.space.multipart_test:create_index('pk', { type = 'TREE', parts = {'id1', 'id2'} })",
+            "box.space.multipart_test:create_index('vidx', { type = 'TREE', unique = false, parts = {'val1'} })",
 
-        "box.space.multipart_test:replace{1, 'one', 'o n e'}",
-        "box.space.multipart_test:replace{2, 'two', 't w o'}",
-        "box.space.multipart_test:replace{3, 'three', 't h r e e'}",
+            "box.space.multipart_test:replace{1, 'one', 'o n e'}",
+            "box.space.multipart_test:replace{2, 'two', 't w o'}",
+            "box.space.multipart_test:replace{3, 'three', 't h r e e'}",
 
-        "function echo(...) return ... end"
+            "function echo(...) return ... end"
     };
 
-    private static final String[] cleanScript = new String[] {
-        "box.space.basic_test and box.space.basic_test:drop()",
-        "box.space.multipart_test and box.space.multipart_test:drop()"
+    private static final String[] cleanScript = new String[]{
+            "box.space.basic_test and box.space.basic_test:drop()",
+            "box.space.multipart_test and box.space.multipart_test:drop()"
     };
 
     @BeforeAll
@@ -124,7 +123,7 @@ public abstract class AbstractTarantoolConnectorIT {
     protected void checkTupleResult(Object res, List tuple) {
         assertNotNull(res);
         assertTrue(List.class.isAssignableFrom(res.getClass()));
-        List list = (List)res;
+        List list = (List) res;
         assertEquals(1, list.size());
         assertNotNull(list.get(0));
         assertTrue(List.class.isAssignableFrom(list.get(0).getClass()));
@@ -143,19 +142,19 @@ public abstract class AbstractTarantoolConnectorIT {
         return fillClientConfig(new TarantoolClientConfig());
     }
 
-    protected static TarantoolClusterClientConfig makeClusterClientConfig() {
+    public static TarantoolClusterClientConfig makeClusterClientConfig() {
         TarantoolClusterClientConfig config = fillClientConfig(new TarantoolClusterClientConfig());
         config.executor = null;
         config.operationExpiryTimeMillis = TIMEOUT;
         return config;
     }
 
-    private static <T> T fillClientConfig(TarantoolClientConfig config) {
+    private static <T extends TarantoolClientConfig> T fillClientConfig(T config) {
         config.username = username;
         config.password = password;
         config.initTimeoutMillis = RESTART_TIMEOUT;
         config.sharedBufferSize = 128;
-        return (T)config;
+        return (T) config;
     }
 
     protected static TarantoolConsole openConsole() {
@@ -163,7 +162,7 @@ public abstract class AbstractTarantoolConnectorIT {
     }
 
     protected static TarantoolConsole openConsole(String instance) {
-        return TarantoolConsole.open(control.tntCtlWorkDir, instance);
+        return TarantoolConsole.open(TarantoolControl.tntCtlWorkDir, instance);
     }
 
     protected TarantoolConnection openConnection() {
@@ -247,7 +246,7 @@ public abstract class AbstractTarantoolConnectorIT {
      *
      * @param timeout Timeout in ms.
      * @param message Error message.
-     * @param r Runnable.
+     * @param r       Runnable.
      */
     protected void assertTimeoutPreemptively(int timeout, String message, Runnable r) {
         ExecutorService executorService = Executors.newSingleThreadExecutor();

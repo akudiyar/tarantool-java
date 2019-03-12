@@ -1,10 +1,28 @@
 package org.tarantool;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class TestUtils {
+
+    public static String makeDiscoveryFunction(String functionName, Collection<?> addresses) {
+        String functionResult = addresses.stream()
+                .map(address -> "'" + address + "'")
+                .collect(Collectors.joining(",", "{", "}"));
+        return makeDiscoveryFunction(functionName, functionResult);
+    }
+
+    public static String makeDiscoveryFunction(String functionName, Object result) {
+        return makeDiscoveryFunction(functionName, result.toString());
+    }
+
+    public static String makeDiscoveryFunction(String functionName, String body) {
+        return "function " + functionName + "() return " + body + " end";
+    }
+
     final static String replicationInfoRequest = "return " +
                                                  "box.info.id, " +
                                                  "box.info.lsn, " +
