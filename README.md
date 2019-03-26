@@ -17,6 +17,7 @@ To get the Java connector for Tarantool 1.6.9, visit
 
 ## Table of contents
 * [Getting started](#getting-started)
+* [Cluster support](#cluster-support)
 * [Where to get help](#where-to-get-help)
 
 ## Getting started
@@ -156,6 +157,97 @@ System.out.println(template.query("select * from hello_world where hello=:id", C
 
 For more implementation details, see [API documentation](http://tarantool.github.io/tarantool-java/apidocs/index.html).
 
+## Cluster support
+
+To be more fault-tolerant the connector provides cluster extensions. In
+particular `TarantoolClusterClient` and built-in `RoundRobinSocketProviderImpl`
+used as a default `SocketProvider` implementation. When currently connected
+instance is down then the client will try to reconnect to the first available
+instance using strategy defined in a socket provider. You need to supply 
+a list of nodes which will be used by the cluster client to provide such 
+ability. Also you can prefer to use a [discovery mechanism](#auto-discovery) 
+in order to dynamically fetch and apply the node list.
+
+#### Basic cluster client usage
+
+1. Configure `TarantoolClusterClientConfig`:
+
+```java
+TarantoolClusterClientConfig config = new TarantoolClusterClientConfig();
+// fill other settings
+config.operationExpiryTimeMillis = 2000;
+config.executor = Executors.newSingleThreadExecutor();
+```
+
+2. Create an instance of `TarantoolClusterClientImpl`. You need to provide
+an initial list of nodes:
+
+```java
+String[] nodes = new String[] { "myHost1:3301", "myHost2:3302", "myHost3:3301" };
+TarantoolClusterClient client = new TarantoolClusterClient(config, nodes);
+``` 
+
+3. Work with the client using same API as defined in `TarantoolClient`:
+
+```java
+client.syncOps().insert(23, Arrays.asList(1, 1));
+```
+
+#### Auto-discovery
+
+Auto-discovery feature allows a cluster client to fetch addresses of 
+cluster nodes to reflect changes related to the cluster topology. To achieve
+this you have to create a LUA function on the server side which returns 
+a single array result. Client periodically pools the server to obtain a 
+fresh list and apply it if its content changes.
+
+1. On the server side create a function which returns nodes:
+
+```bash
+tarantool> function get_cluster_nodes() return { 'host1:3301', 'host2:3302', 'host3:3301' } end
+```
+
+You need to pay attention to a function contract we are curretly supporting:
+* The discovery function must NOT consume any parameters.
+* The discovery function must return a singe array result (any other cases such as 
+multi-return result will be discarded) 
+
+2. On the client side configure discovery settings in `TarantoolClusterClientConfig`:
+
+```java
+TarantoolClusterClientConfig config = new TarantoolClusterClientConfig();
+// fill other settings
+config.clusterDiscoveryEntryInstance = "10.0.0.15:3301";    // target discovery server
+config.clusterDiscoveryEntryFunction = "get_cluster_nodes"; // discovery function used to fetch nodes 
+config.clusterDiscoveryDelayMillis = 60_000;                // how often client polls the discovery server  
+```
+
+3. Create a client using the config made above.
+
+```java
+TarantoolClusterClient client = new TarantoolClusterClient(config);
+client.syncOps().insert(45, Arrays.asList(1, 1));
+```
+
+#### Auto-discovery caveats
+
+* You need to supply both `clusterDiscoveryEntryInstance` and `clusterDiscoveryEntryFunction`
+  to enable auto-discovery feature.
+* There are only two cases when a discovery task runs: just after initialization of the cluster
+  client and a periodical scheduler timeout defined in `TarantoolClusterClientConfig.clusterDiscoveryDelayMillis`. 
+* It's possible both provide an initial node list and enable auto-discovery.
+  In this way client will establish first connection to the Tarantool server using
+  the initial list and when the client receives a new list it will replace the list if required.
+* When auto-discovery is enabled but the initial node list isn't provided the client
+  will wait for the list obtained from the discovery server. If fetching and connection
+  take more than `TarantoolClientConfig.initTimeoutMillis` then client will be closed
+  by timeout.
+* It's possible to obtain a list which does NOT contain the node we are currently
+  connected to. It leads the client to try to reconnect to another node from the 
+  new list. It may take some time to graceful disconnect from the current node.
+  The client does its best to catch the moment when no messages are pending by the
+  client.  
+
 ## Where to get help
 
 Got problems or questions? Post them on
@@ -164,6 +256,7 @@ Got problems or questions? Post them on
 base for possible answers and solutions.
 
 ## Building
+
 To run tests
 ```
 ./mvnw clean test
